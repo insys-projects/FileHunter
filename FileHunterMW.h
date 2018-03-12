@@ -1,0 +1,80 @@
+#pragma once
+
+#include <QtWidgets/QMainWindow>
+#include "ui_FileHunterMW.h"
+
+#include "FileHunterCore.h"
+
+enum
+{
+	SRC_NAME_COLUMN = 0,
+	SRC_DATE_COLUMN,
+	EQUAL_COLUMN,
+	DST_DATE_COLUMN,
+	DST_NAME_COLUMN
+};
+
+typedef QList<int> TRowList;
+
+class FileHunterMW : public QMainWindow
+{
+	Q_OBJECT
+
+private:
+	Ui::FileHunterMWClass ui;
+
+	FileHunterCore m_FileHunterCore; // Объект, выполняющий поиск и сравнение файлов
+
+	int m_isStop; // 1 - остановлен поиск
+
+	TRowList m_lnEqualRow;		// Список номеров строк, в которых файлы равны 
+	TRowList m_lnNoEqualRow;	// Список номеров строк, в которых файлы разные
+	TRowList m_lnNotFoundRow;	// Список номеров строк, в которых файл не найден
+	TRowList m_lnLeftRightRow;  // Список номеров строк, в которых файлы отмечены для копирования слева направо
+	TRowList m_lnRightLeftRow;	// Список номеров строк, в которых файлы отмечены для копирвоания справа налево
+
+	QMap<int, QPushButton*> m_mpEqualButtons;	// Ключ - признак равенства, значение - указатель на кнопку
+	QMap<int, TRowList*>  m_mpRowLists;			// Ключ - признак равенства, значение - список номеров строк 
+
+public:
+	FileHunterMW(QWidget *parent = Q_NULLPTR);
+	~FileHunterMW();
+
+private:
+	// Выбор директории
+	void GetExistingDirectory(QLineEdit *pEdit);
+	// Выбор файла
+	void GetFileName(QLineEdit *pEdit);
+	// Очистка таблицы
+	void ClearTableItems();
+	// Создать item с датой и временем последней модификации файла
+	void CreateItemDate(const QString &sFileName, int nRow, int nColumn, int isAlignTop = 0);
+	// Создать item с признаком равенства файлов
+	void CreateItemEqual(int isEqual, int nRow);
+	// Показать или спрятать строку
+	void ShowHideRow(int nRow);
+	void ShowHideRow(int nRow, QPushButton *pButton);
+	// Сохранение параметров в реестр
+	void WriteParams();
+	// Чтение параметров из реестра
+	void ReadParams();
+
+private slots:
+	void slotSrcBrowseButton();
+	void slotDstBrowseButton();
+	// Нажата кнопка поиска
+	void slotSearch();
+	// Найдены файлы
+	void slotFindFileCompleted(TFindFilesRecord rFindFile, int nCurrent, int nTotal);
+	// Поиск завершен
+	void slotSearchCompleted();
+	
+	// Щелчок по элементу таблицы
+	void slotItemClicked(QTableWidgetItem* pItem);
+
+	// Щелчок по кнопке Одинаковые файлы
+	void slotEqualClicked();
+
+	// Копирование файлов
+	void slotCopy();
+};
