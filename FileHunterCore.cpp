@@ -9,6 +9,8 @@
 FileHunterCore::FileHunterCore()
 {
 	m_isStop = 1;
+	
+	m_sMask = "*.*";
 
 	m_pData1 = (char*)malloc(MAX_BUF_SIZE);
 	m_pData2 = (char*)malloc(MAX_BUF_SIZE);
@@ -128,15 +130,23 @@ void FileHunterCore::FileCopy(const QString &sSrcPath, const QString &sDstPath)
 	QFile::copy(sSrcPath, sDstPath);
 }
 
+// Установить маску
+void FileHunterCore::SetMask(const QString &sMask)
+{
+	m_sMask = sMask;
+}
+
 // Поиск файла
 TFindFilesRecord FileHunterCore::FindFile(const QString &sFile)
 {
 	TFindFilesRecord rFindFiles;
 	QFileInfo file_info(sFile);
 	QString sFindFile;
+	QString sStatus;
 
 	rFindFiles.sSrcFile = sFile;
-
+	rFindFiles.nSrcFileStatus = m_mSrcSvnStatus.value(sFile, SVN_STATUS_NORMAL);
+		
 	QDirIterator it(m_sDstDir, QStringList() << file_info.fileName(), QDir::NoFilter, QDirIterator::Subdirectories);
 
 	// Перебираем все найденные файлы
@@ -145,6 +155,7 @@ TFindFilesRecord FileHunterCore::FindFile(const QString &sFile)
 		sFindFile = it.next();
 		// Добавляем в список найденный файл
 		rFindFiles.lsFindFiles << sFindFile;
+		rFindFiles.lnFindFilesStatus << m_mDstSvnStatus.value(sFindFile, SVN_STATUS_NORMAL);
 		// Добавляем в список признак равенства файлов
 		rFindFiles.lisEqual << IsEqual(sFile, sFindFile);
 	}
@@ -169,8 +180,12 @@ void FileHunterCore::FindFilesTh()
 		return;
 	}
 
+	// получаем svn-статусы
+	m_mSrcSvnStatus = GetSvnStatus(m_sSrcDir);
+	m_mDstSvnStatus = GetSvnStatus(m_sDstDir);
+
 	// Формирование списка файлов, которые будем искать
-	QDirIterator it(m_sSrcDir, QDir::Files | QDir::NoDot | QDir::NoDotDot, QDirIterator::Subdirectories);
+	QDirIterator it(m_sSrcDir, m_sMask.split("|"), QDir::Files | QDir::NoDot | QDir::NoDotDot, QDirIterator::Subdirectories);
 
 	while(it.hasNext())
 	{
@@ -200,4 +215,43 @@ void FileHunterCore::FindFilesTh()
 	m_StopMutex.lock();
 	m_isStop = 1;
 	m_StopMutex.unlock();
+}
+
+QMap<QString, int> FileHunterCore::GetSvnStatus(QString sPath)
+{
+	QMap<QString, int> mSvnStatus;
+
+	QProcess::execute("cmd.exe /C \"svn st " + sPath + " > FH.tmp\"");
+
+	QFile file("FH.tmp");
+	QTextStream strm(&file);
+
+	file.open(QIODevice::ReadOnly);
+
+	QString sLine = strm.readLine();
+
+	QString sKey;
+	int nData;
+	QStringList list;
+
+	while(!sLine.isEmpty())
+	{
+		list  = sLine.split(" ");
+		list.removeAll("");
+		sKey  = list[1];
+		sKey.replace("\\", "/");
+		
+		if(list[0] == "M")
+			nData = SVN_STATUS_MODIFIED;
+		else if(list[0] == "?")
+			nData = SVN_STATUS_UNVERSIONED;
+		else if(list[0].isEmpty())
+			nData = SVN_STATUS_NORMAL;
+
+		mSvnStatus.insert(sKey, nData);
+
+		sLine = strm.readLine();
+	}
+
+	return mSvnStatus;
 }

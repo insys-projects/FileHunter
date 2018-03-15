@@ -58,6 +58,10 @@ private:
 	void WriteParams();
 	// Чтение параметров из реестра
 	void ReadParams();
+	// Обновить иконку файла
+	void UpdateSvnIcon(QTableWidgetItem* pItem);
+
+	QIcon GetSvnIcon(int nStatus);
 
 private slots:
 	void slotSrcBrowseButton();
@@ -69,6 +73,9 @@ private slots:
 	// Поиск завершен
 	void slotSearchCompleted();
 	
+	// Контекстное меню
+	void slotCustomMenuRequested(QPoint pos);
+
 	// Щелчок по элементу таблицы
 	void slotItemClicked(QTableWidgetItem* pItem);
 
@@ -77,4 +84,18 @@ private slots:
 
 	// Копирование файлов
 	void slotCopy();
+
+	// Открытие файла
+	void slotOpenFile();
+	// Открыть обозреватель хранилища SVN
+	void slotSvnRepoBrowser();
+	// Открыть журнал SVN
+	void slotSvnLog();
+	// Открыть фиксацию SVN
+	void slotSvnFix();
+
+	void slotSvnUpdate();
+
+	// Сравнить файлы
+	void slotMerge();
 };

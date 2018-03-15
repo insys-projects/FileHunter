@@ -105,6 +105,35 @@
            </spacer>
           </item>
           <item>
+           <widget class="QLineEdit" name="m_pMaskEdit">
+            <property name="maximumSize">
+             <size>
+              <width>75</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>*.*</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeType">
+             <enum>QSizePolicy::Fixed</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>5</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
            <widget class="QLineEdit" name="m_pDstLineEdit"/>
           </item>
           <item>
@@ -562,6 +591,42 @@
    </property>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
+  <action name="m_pOpenFileAction">
+   <property name="text">
+    <string>Открыть файл</string>
+   </property>
+   <property name="toolTip">
+    <string>SVN: Открыть файл</string>
+   </property>
+  </action>
+  <action name="m_pSvnUpdateAction">
+   <property name="text">
+    <string>SVN: Обновить</string>
+   </property>
+   <property name="toolTip">
+    <string>SVN: Обновить</string>
+   </property>
+  </action>
+  <action name="m_pSvnFixAction">
+   <property name="text">
+    <string>SVN: Фиксировать</string>
+   </property>
+  </action>
+  <action name="m_pSvnLogAction">
+   <property name="text">
+    <string>SVN: Журнал</string>
+   </property>
+  </action>
+  <action name="m_pSvnRepobrowserAction">
+   <property name="text">
+    <string>SVN: Обозреватель хранилища</string>
+   </property>
+  </action>
+  <action name="m_pMergeAction">
+   <property name="text">
+    <string>Сравнить файлы</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <resources>

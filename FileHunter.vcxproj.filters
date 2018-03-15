@@ -87,6 +87,18 @@
     <ClCompile Include="GeneratedFiles\Release_IS\moc_EqualDelegate.cpp">
       <Filter>Generated Files\Release_IS</Filter>
     </ClCompile>
+    <ClCompile Include="GeneratedFiles\Debug\moc_FilePathDelegate.cpp">
+      <Filter>Generated Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Release\moc_FilePathDelegate.cpp">
+      <Filter>Generated Files\Release</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Release_IS\moc_FilePathDelegate.cpp">
+      <Filter>Generated Files\Release_IS</Filter>
+    </ClCompile>
+    <ClCompile Include="FilePathDelegate.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="FileHunterMW.h">
@@ -102,6 +114,9 @@
       <Filter>Header Files</Filter>
     </CustomBuild>
     <CustomBuild Include="EqualDelegate.h">
+      <Filter>Header Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="FilePathDelegate.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
   </ItemGroup>

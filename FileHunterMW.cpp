@@ -6,8 +6,11 @@
 #include <QMouseEvent>
 #include <QSettings>
 #include <QMessageBox>
+#include <QDesktopServices>
+#include <QProcess>
 
 #include "EqualDelegate.h"
+#include "FilePathDelegate.h"
 
 FileHunterMW::FileHunterMW(QWidget *parent)
 	: QMainWindow(parent)
@@ -33,9 +36,23 @@ FileHunterMW::FileHunterMW(QWidget *parent)
 	ui.m_pTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
 	ui.m_pTable->setItemDelegateForColumn(EQUAL_COLUMN, new EqualDelegate(ui.m_pTable));
 
+	ui.m_pTable->setItemDelegateForColumn(SRC_NAME_COLUMN, new FilePathDelegate(ui.m_pTable, QStyleOptionViewItem::Right));
+	ui.m_pTable->setItemDelegateForColumn(DST_NAME_COLUMN, new FilePathDelegate(ui.m_pTable));
+
+	// Контекстное меню
+	ui.m_pTable->setContextMenuPolicy(Qt::CustomContextMenu);
+	connect(ui.m_pTable, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(slotCustomMenuRequested(QPoint)));
+
 	connect(&m_FileHunterCore, SIGNAL(findFileCompleted(TFindFilesRecord, int, int)),
 			this, SLOT(slotFindFileCompleted(TFindFilesRecord, int, int)));
 	connect(&m_FileHunterCore, SIGNAL(searchCompleted()), this, SLOT(slotSearchCompleted()));
+
+	connect(ui.m_pOpenFileAction, SIGNAL(triggered(bool)), this, SLOT(slotOpenFile()));
+	connect(ui.m_pSvnRepobrowserAction, SIGNAL(triggered(bool)), this, SLOT(slotSvnRepoBrowser()));
+	connect(ui.m_pSvnLogAction, SIGNAL(triggered(bool)), this, SLOT(slotSvnLog()));
+	connect(ui.m_pSvnFixAction, SIGNAL(triggered(bool)), this, SLOT(slotSvnFix()));
+	connect(ui.m_pSvnUpdateAction, SIGNAL(triggered(bool)), this, SLOT(slotSvnUpdate()));
+	connect(ui.m_pMergeAction, SIGNAL(triggered(bool)), this, SLOT(slotMerge()));
 
 	// Чтение параметров
 	ReadParams();
@@ -215,6 +232,33 @@ void FileHunterMW::ReadParams()
 	settings.endGroup();
 }
 
+// Обновить иконку файла
+void FileHunterMW::UpdateSvnIcon(QTableWidgetItem* pItem)
+{
+	QMap<QString, int> mStatus = m_FileHunterCore.GetSvnStatus(pItem->text());
+	int nStatus = mStatus.value(pItem->text(), SVN_STATUS_NORMAL);
+			
+	pItem->setIcon(GetSvnIcon(nStatus));
+}
+
+QIcon FileHunterMW::GetSvnIcon(int nStatus)
+{
+	QIcon icon;
+
+	switch(nStatus)
+	{
+		case SVN_STATUS_NORMAL:
+			icon.addFile(":/FileHunterMW/Resources/svn_norm.png");
+			break;
+
+		case SVN_STATUS_MODIFIED:
+			icon.addFile(":/FileHunterMW/Resources/svn_mod.png");
+			break;
+	}
+
+	return icon;
+}
+
 void FileHunterMW::slotSrcBrowseButton()
 {
 	if(ui.m_pSrcDirRadioBtn->isChecked())
@@ -272,6 +316,8 @@ void FileHunterMW::slotSearch()
 		m_FileHunterCore.SetSrcDir(ui.m_pSrcLineEdit->text());
 		m_FileHunterCore.FindFiles();
 	}
+
+	m_FileHunterCore.SetMask(ui.m_pMaskEdit->text());
 }
 
 // Найдены файлы
@@ -307,7 +353,7 @@ void FileHunterMW::slotFindFileCompleted(TFindFilesRecord rFindFile, int nCurren
 	// Отображаем исходный файл
 	for(i = nRow; i < ui.m_pTable->rowCount(); i++)
 	{
-		pItem = new QTableWidgetItem(rFindFile.sSrcFile);
+		pItem = new QTableWidgetItem(GetSvnIcon(rFindFile.nSrcFileStatus), rFindFile.sSrcFile);
 
 		if(isAlignTop)
 			pItem->setTextAlignment(Qt::AlignTop);
@@ -328,7 +374,8 @@ void FileHunterMW::slotFindFileCompleted(TFindFilesRecord rFindFile, int nCurren
 	{
 		for(i = nRow, j = 0; i < ui.m_pTable->rowCount(); i++, j++)
 		{
-			ui.m_pTable->setItem(i, DST_NAME_COLUMN, new QTableWidgetItem(rFindFile.lsFindFiles[j]));
+			pItem = new QTableWidgetItem(GetSvnIcon(rFindFile.lnFindFilesStatus[j]), rFindFile.lsFindFiles[j]);
+			ui.m_pTable->setItem(i, DST_NAME_COLUMN, pItem);
 			CreateItemDate(rFindFile.lsFindFiles[j], i, DST_DATE_COLUMN);
 			// Устанавливаем признак равенства
 			CreateItemEqual(rFindFile.lisEqual[j], i);
@@ -355,6 +402,47 @@ void FileHunterMW::slotSearchCompleted()
 {
 	if(m_isStop == 0)
 		slotSearch();
+}
+
+// Контекстное меню
+void FileHunterMW::slotCustomMenuRequested(QPoint pos)
+{
+	QTableWidgetItem *pItem = ui.m_pTable->itemAt(pos);
+	int nCol;
+
+	if(pItem == 0)
+		// Не было щелчка по ячейке таблицы
+		return;
+
+	nCol = pItem->column();
+
+	if((nCol == DST_NAME_COLUMN) && (pItem->text() == QString::fromLocal8Bit("Файл не найден")))
+		return;
+
+	if((nCol == EQUAL_COLUMN) && (pItem->text().toInt() == NOT_FOUND))
+		return;
+
+	QMenu *pMenu    = new QMenu();
+	
+	switch(nCol)
+	{
+		case SRC_NAME_COLUMN:
+		case DST_NAME_COLUMN:
+			pMenu->addAction(ui.m_pOpenFileAction);
+			pMenu->addSeparator();
+			pMenu->addAction(ui.m_pSvnUpdateAction);
+			pMenu->addAction(ui.m_pSvnFixAction);
+			pMenu->addAction(ui.m_pSvnLogAction);
+			pMenu->addAction(ui.m_pSvnRepobrowserAction);
+			break;
+
+		case EQUAL_COLUMN:
+			pMenu->addAction(ui.m_pMergeAction);
+	}
+
+	pMenu->exec(ui.m_pTable->viewport()->mapToGlobal(pos));
+
+	delete pMenu;
 }
 
 // Щелчок по элементу таблицы
@@ -469,6 +557,9 @@ void FileHunterMW::slotCopy()
 
 		pItem = ui.m_pTable->item(nRow, nDstDateColumn);
 		pItem->setText(sSrcDate);
+
+		pItem = ui.m_pTable->item(nRow, nDstColumn);
+		UpdateSvnIcon(pItem);
 	}
 
 	m_lnEqualRow.append(*pRowList);
@@ -476,4 +567,57 @@ void FileHunterMW::slotCopy()
 	pRowList->clear();
 
 	QMessageBox::question(this, "FileHunter", QString::fromLocal8Bit("Копирование завершено."), QMessageBox::Ok);
+
+
+}
+
+// Открытие файла
+void FileHunterMW::slotOpenFile()
+{
+	QTableWidgetItem *pItem = ui.m_pTable->currentItem();
+	QDesktopServices::openUrl(QUrl::fromLocalFile(pItem->text()));
+}
+
+// Открыть обозреватель хранилища SVN
+void FileHunterMW::slotSvnRepoBrowser()
+{
+	QTableWidgetItem *pItem = ui.m_pTable->currentItem();
+	QProcess::execute("TortoiseProc.exe /command:repobrowser /path:\"" + pItem->text() +"\"");
+}
+
+// Открыть журнал SVN
+void FileHunterMW::slotSvnLog()
+{
+	QTableWidgetItem *pItem = ui.m_pTable->currentItem();
+	QProcess::execute("TortoiseProc.exe /command:log /path:\"" + pItem->text() + "\"");
+}
+
+// Открыть фиксацию SVN
+void FileHunterMW::slotSvnFix()
+{
+	QTableWidgetItem *pItem = ui.m_pTable->currentItem();
+	QProcess::execute("TortoiseProc.exe /command:commit /path:\"" + pItem->text() + "\"");
+	// Обновить значок статуса svn
+	UpdateSvnIcon(pItem);
+}
+
+void FileHunterMW::slotSvnUpdate()
+{
+	QTableWidgetItem *pItem = ui.m_pTable->currentItem();
+	QProcess::execute("TortoiseProc.exe /command:update /path:\"" + pItem->text() + "\"");
+	// Обновить значок статуса svn
+	UpdateSvnIcon(pItem);
+}
+
+// Сравнить файлы
+void FileHunterMW::slotMerge()
+{
+	QTableWidgetItem *pItem = ui.m_pTable->currentItem();
+	QTableWidgetItem *pSrcItem = ui.m_pTable->item(pItem->row(), SRC_NAME_COLUMN);
+	QTableWidgetItem *pDstItem = ui.m_pTable->item(pItem->row(), DST_NAME_COLUMN);
+
+	QProcess::execute("TortoiseMerge.exe " + pSrcItem->text() + " " + pDstItem->text());
+	// Обновить значок статуса svn
+	UpdateSvnIcon(pSrcItem);
+	UpdateSvnIcon(pDstItem);
 }

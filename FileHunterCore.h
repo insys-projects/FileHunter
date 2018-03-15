@@ -4,11 +4,21 @@
 #include <QMetaType>
 #include <QMutex>
 #include <QWaitCondition>
+#include <QMap>
+
+enum
+{
+	SVN_STATUS_NORMAL = 0,
+	SVN_STATUS_MODIFIED = 1,
+	SVN_STATUS_UNVERSIONED = 2
+};
 
 typedef struct
 {
 	QString		sSrcFile;		// Исходный файл
 	QStringList lsFindFiles;	// Найденные файлы
+	int			nSrcFileStatus;
+	QList<int>  lnFindFilesStatus;
 	QList<int>  lisEqual;		// Признак равенства
 } TFindFilesRecord;
 
@@ -16,11 +26,13 @@ typedef QList<TFindFilesRecord> FindFilesList;
 
 class FileHunterCore : public QObject
 {
-Q_OBJECT
+	Q_OBJECT
 
 	QString m_sSrcDir;	// Исходная папка
 	QString m_sSrcFile;	// Исходный файл
 	QString m_sDstDir;	// Папка для поиска
+
+	QString m_sMask; 	// Маска файлов для поиска
 
 	volatile int m_isStop;
 
@@ -29,6 +41,9 @@ Q_OBJECT
 
 	char *m_pData1;
 	char *m_pData2;
+
+	QMap<QString, int> m_mSrcSvnStatus;
+	QMap<QString, int> m_mDstSvnStatus;
 
 public:
 	FileHunterCore();
@@ -50,12 +65,17 @@ public:
 	int IsEqual(const QString &sFile1, const QString &sFile2);
 	// Копирование файла
 	void FileCopy(const QString &sSrcPath, const QString &sDstPath);
+	// Установить маску
+	void SetMask(const QString &sMask);
 
 private:
 	// Поиск файла
 	TFindFilesRecord FindFile(const QString &sFile);
 	// Поток поиска файлов
 	void FindFilesTh();
+	
+public:
+	QMap<QString, int> GetSvnStatus(QString sPath);
 
 signals:
 	// Поиск завершен
