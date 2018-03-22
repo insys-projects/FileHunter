@@ -207,12 +207,18 @@ void FileHunterMW::WriteParams()
 	settings.setValue("RightLeft", ui.m_pRightLeftButton->isChecked());
 	settings.setValue("NotFound",  ui.m_pNotFoundButton->isChecked());
 	settings.endGroup();
+
+	settings.setValue("SrcFile", ui.m_pSrcDirRadioBtn->isChecked());
+	settings.setValue("SrcPath", ui.m_pSrcLineEdit->text());
+	settings.setValue("DstPath", ui.m_pDstLineEdit->text());
+	settings.setValue("Mask", ui.m_pMaskEdit->text());
 }
 
 // Чтение параметров из реестра
 void FileHunterMW::ReadParams()
 {
 	bool isCheck;
+	QString str;
 
 	QSettings settings("Instrumental Systems", "FileHunter");
 
@@ -232,6 +238,20 @@ void FileHunterMW::ReadParams()
 	isCheck = settings.value("NotFound", true).toBool();
 	ui.m_pNotFoundButton->setChecked(isCheck);
 	settings.endGroup();
+
+	isCheck = settings.value("SrcFile", true).toBool();
+
+	if(!isCheck)
+		ui.m_pSrcFileRadioBtn->setChecked(true);
+
+	str = settings.value("SrcPath", "").toString();
+	ui.m_pSrcLineEdit->setText(str);
+
+	str = settings.value("DstPath", "").toString();
+	ui.m_pDstLineEdit->setText(str);
+
+	str = settings.value("Mask", "*.*").toString();
+	ui.m_pMaskEdit->setText(str);
 }
 
 // Обновить иконку файла
