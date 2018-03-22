@@ -200,8 +200,6 @@ void FileHunterCore::FindFilesTh()
 	{
 		emit findFileCompleted(FindFile(sFile), i++, lsFiles.size());
 
-		Sleep(100);
-
 		if(m_isStop)
 			// Остановка поиска
 			break;
@@ -220,10 +218,15 @@ void FileHunterCore::FindFilesTh()
 QMap<QString, int> FileHunterCore::GetSvnStatus(QString sPath)
 {
 	QMap<QString, int> mSvnStatus;
+	QDir dir;
+	QString sFHPath = qgetenv("SystemDrive") + "/Users/" + qgetenv("USERNAME") + "/AppData/Roaming/Instrumental Systems/FileHunter";
 
-	QProcess::execute("cmd.exe /C \"svn st " + sPath + " > FH.tmp\"");
+	if(!dir.exists(sFHPath))
+		dir.mkpath(sFHPath);
+	
+	QProcess::execute("cmd.exe /C svn st " + sPath + " > \"" + sFHPath + "/FH.tmp\"");
 
-	QFile file("FH.tmp");
+	QFile file(sFHPath + "/FH.tmp");
 	QTextStream strm(&file);
 
 	file.open(QIODevice::ReadOnly);
