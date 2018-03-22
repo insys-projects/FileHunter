@@ -54,6 +54,8 @@ FileHunterMW::FileHunterMW(QWidget *parent)
 	connect(ui.m_pSvnUpdateAction, SIGNAL(triggered(bool)), this, SLOT(slotSvnUpdate()));
 	connect(ui.m_pMergeAction, SIGNAL(triggered(bool)), this, SLOT(slotMerge()));
 
+	connect(&m_FileSystemWatcher, SIGNAL(fileChanged(QString)), this, SLOT(slotFileChanged(QString)));
+
 	// Чтение параметров
 	ReadParams();
 }
@@ -304,6 +306,9 @@ void FileHunterMW::slotSearch()
 	// Очищаем таблицу
 	ClearTableItems();
 
+	QStringList lsFiles = m_FileSystemWatcher.files();
+	m_FileSystemWatcher.removePaths(lsFiles);
+
 	m_FileHunterCore.SetDstDir(ui.m_pDstLineEdit->text());
 
 	if(ui.m_pSrcFileRadioBtn->isChecked())
@@ -349,6 +354,9 @@ void FileHunterMW::slotFindFileCompleted(TFindFilesRecord rFindFile, int nCurren
 		ui.m_pTable->setSpan(nRow, SRC_NAME_COLUMN, nRowSpanCount, 1);
 		ui.m_pTable->setSpan(nRow, SRC_DATE_COLUMN, nRowSpanCount, 1);
 	}
+
+	m_FileSystemWatcher.addPath(rFindFile.sSrcFile);
+	m_FileSystemWatcher.addPaths(rFindFile.lsFindFiles);
 
 	// Отображаем исходный файл
 	for(i = nRow; i < ui.m_pTable->rowCount(); i++)
@@ -620,4 +628,69 @@ void FileHunterMW::slotMerge()
 	// Обновить значок статуса svn
 	UpdateSvnIcon(pSrcItem);
 	UpdateSvnIcon(pDstItem);
+}
+
+// Файл изменился
+void FileHunterMW::slotFileChanged(const QString &sPath)
+{
+	QList<QTableWidgetItem*> lpSrcItems = ui.m_pTable->findItems(sPath, Qt::MatchExactly);
+	QList<QTableWidgetItem*> lpDstItems;
+	QTableWidgetItem *pSrcItem = lpSrcItems[0];
+	QTableWidgetItem *pDstItem;
+	QTableWidgetItem *pItem;
+	QFileInfo file_info(pSrcItem->text());
+	int nStatus, nCurStatus;
+
+	// Обновляем иконку svn
+	UpdateSvnIcon(pSrcItem);
+
+	// Изменяем дату последней модификации файла
+	if(pSrcItem->column() == SRC_NAME_COLUMN)
+		pItem = ui.m_pTable->item(pSrcItem->row(), SRC_DATE_COLUMN);
+	else
+		pItem = ui.m_pTable->item(pSrcItem->row(), DST_DATE_COLUMN);
+
+	pItem->setText(file_info.lastModified().toString("dd.MM.yy hh:mm:ss"));
+
+	if(pItem == 0)
+		return;
+
+	if(pSrcItem->column() == SRC_NAME_COLUMN)
+	{
+		int i;
+		int nRow = pSrcItem->row();
+		int nSpan = ui.m_pTable->rowSpan(nRow, SRC_NAME_COLUMN);
+
+		for(i = nRow; i < (nRow + nSpan); i++)
+			lpDstItems << ui.m_pTable->item(i, DST_NAME_COLUMN);
+	}
+	else
+		lpDstItems << ui.m_pTable->item(pSrcItem->row(), SRC_NAME_COLUMN);
+
+	foreach(pDstItem, lpDstItems)
+	{
+		// Проверяем признак равенства
+		pItem = ui.m_pTable->item(pDstItem->row(), EQUAL_COLUMN);
+
+		if(m_FileHunterCore.IsEqual(pSrcItem->text(), pDstItem->text()))
+			nStatus = YES_EQUAL;
+		else
+			nStatus = NO_EQUAL;
+
+		nCurStatus = pItem->text().toInt();
+
+		if((nCurStatus >> 8) != 0)
+			nStatus = (nStatus << 8) | (nCurStatus & 0xFF);
+		else
+		{
+			TRowList *pRowLists = m_mpRowLists.value(nCurStatus);
+			pRowLists->removeOne(pItem->row());
+
+			pRowLists = m_mpRowLists.value(nStatus);
+			pRowLists->append(pItem->row());
+			qStableSort(*pRowLists);
+		}
+
+		pItem->setText(QString::number(nStatus));
+	}
 }

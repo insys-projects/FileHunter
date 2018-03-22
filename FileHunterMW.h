@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QtWidgets/QMainWindow>
+#include <QFileSystemWatcher>
+
 #include "ui_FileHunterMW.h"
 
 #include "FileHunterCore.h"
@@ -35,6 +37,8 @@ private:
 
 	QMap<int, QPushButton*> m_mpEqualButtons;	// Ключ - признак равенства, значение - указатель на кнопку
 	QMap<int, TRowList*>  m_mpRowLists;			// Ключ - признак равенства, значение - список номеров строк 
+
+	QFileSystemWatcher m_FileSystemWatcher;
 
 public:
 	FileHunterMW(QWidget *parent = Q_NULLPTR);
@@ -98,4 +102,6 @@ private slots:
 
 	// Сравнить файлы
 	void slotMerge();
+	// Файл изменился
+	void slotFileChanged(const QString &sPath);
 };
