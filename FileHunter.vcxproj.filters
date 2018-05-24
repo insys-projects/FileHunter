@@ -99,6 +99,18 @@
     <ClCompile Include="FilePathDelegate.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DiffDelegate.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Debug\moc_DiffDelegate.cpp">
+      <Filter>Generated Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Release\moc_DiffDelegate.cpp">
+      <Filter>Generated Files\Release</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Release_IS\moc_DiffDelegate.cpp">
+      <Filter>Generated Files\Release_IS</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="FileHunterMW.h">
@@ -117,6 +129,9 @@
       <Filter>Header Files</Filter>
     </CustomBuild>
     <CustomBuild Include="FilePathDelegate.h">
+      <Filter>Header Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="DiffDelegate.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
   </ItemGroup>

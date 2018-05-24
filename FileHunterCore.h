@@ -20,6 +20,8 @@ typedef struct
 	int			nSrcFileStatus;
 	QList<int>  lnFindFilesStatus;
 	QList<int>  lisEqual;		// Признак равенства
+	QString		sSrcVersion;	// Версия исходного файла
+	QStringList lsFindFilesVersions; // Версии найденных файлов
 } TFindFilesRecord;
 
 typedef QList<TFindFilesRecord> FindFilesList;
@@ -45,6 +47,8 @@ class FileHunterCore : public QObject
 	QMap<QString, int> m_mSrcSvnStatus;
 	QMap<QString, int> m_mDstSvnStatus;
 
+	bool m_isFindFileVersion; 
+
 public:
 	FileHunterCore();
 	~FileHunterCore();
@@ -67,12 +71,18 @@ public:
 	void FileCopy(const QString &sSrcPath, const QString &sDstPath);
 	// Установить маску
 	void SetMask(const QString &sMask);
+	// Включить поиск версии файла
+	void SetFindFileVersionEnabled(bool isEnabled);
+	// Поиск версии файла
+	QString FindFileVersion(const QString &sFile);
 
 private:
 	// Поиск файла
 	TFindFilesRecord FindFile(const QString &sFile);
 	// Поток поиска файлов
 	void FindFilesTh();
+	// Поиск версий файлов
+	void FindFilesVersions(TFindFilesRecord *prFindFiles);
 	
 public:
 	QMap<QString, int> GetSvnStatus(QString sPath);

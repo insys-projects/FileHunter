@@ -10,9 +10,12 @@
 enum
 {
 	SRC_NAME_COLUMN = 0,
+	SRC_VERSION_COLUMN,
 	SRC_DATE_COLUMN,
 	EQUAL_COLUMN,
+	DIFF_COLUMN,
 	DST_DATE_COLUMN,
+	DST_VERSION_COLUMN,
 	DST_NAME_COLUMN
 };
 
@@ -53,8 +56,12 @@ private:
 	void ClearTableItems();
 	// Создать item с датой и временем последней модификации файла
 	void CreateItemDate(const QString &sFileName, int nRow, int nColumn, int isAlignTop = 0);
+	// Создать item с версией файла
+	void CreateItemVersion(const QString &sVersion, int nRow, int nColumn, int isAlignTop = 0);
 	// Создать item с признаком равенства файлов
 	void CreateItemEqual(int isEqual, int nRow);
+	// Создать item сравнения
+	void CreateItemDiff(int isDiff, int nRow);
 	// Показать или спрятать строку
 	void ShowHideRow(int nRow);
 	void ShowHideRow(int nRow, QPushButton *pButton);

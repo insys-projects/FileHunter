@@ -10,6 +10,7 @@
 #include <QProcess>
 
 #include "EqualDelegate.h"
+#include "DiffDelegate.h"
 #include "FilePathDelegate.h"
 
 FileHunterMW::FileHunterMW(QWidget *parent)
@@ -35,6 +36,7 @@ FileHunterMW::FileHunterMW(QWidget *parent)
 
 	ui.m_pTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
 	ui.m_pTable->setItemDelegateForColumn(EQUAL_COLUMN, new EqualDelegate(ui.m_pTable));
+	ui.m_pTable->setItemDelegateForColumn(DIFF_COLUMN, new DiffDelegate(ui.m_pTable));
 
 	ui.m_pTable->setItemDelegateForColumn(SRC_NAME_COLUMN, new FilePathDelegate(ui.m_pTable, QStyleOptionViewItem::Right));
 	ui.m_pTable->setItemDelegateForColumn(DST_NAME_COLUMN, new FilePathDelegate(ui.m_pTable));
@@ -152,6 +154,17 @@ void FileHunterMW::CreateItemDate(const QString &sFileName, int nRow, int nColum
 	ui.m_pTable->setItem(nRow, nColumn, pItem);
 }
 
+// Создать item с версией файла
+void FileHunterMW::CreateItemVersion(const QString &sVersion, int nRow, int nColumn, int isAlignTop)
+{
+	QTableWidgetItem *pItem = new QTableWidgetItem(sVersion);
+
+	if(isAlignTop)
+		pItem->setTextAlignment(Qt::AlignTop);
+
+	ui.m_pTable->setItem(nRow, nColumn, pItem);
+}
+
 // Создать item с признаком равенства файлов
 void FileHunterMW::CreateItemEqual(int isEqual, int nRow)
 {
@@ -171,6 +184,17 @@ void FileHunterMW::CreateItemEqual(int isEqual, int nRow)
 	
 	// Устанавливаем item в таблицу
 	ui.m_pTable->setItem(nRow, EQUAL_COLUMN, pItem);
+}
+
+// Создать item сравнения
+void FileHunterMW::CreateItemDiff(int isDiff, int nRow)
+{
+	QTableWidgetItem *pItem = new QTableWidgetItem();
+
+	pItem->setText(QString::number(isDiff));
+
+	// Устанавливаем item в таблицу
+	ui.m_pTable->setItem(nRow, DIFF_COLUMN, pItem);
 }
 
 // Показать или спрятать строку
@@ -212,6 +236,8 @@ void FileHunterMW::WriteParams()
 	settings.setValue("SrcPath", ui.m_pSrcLineEdit->text());
 	settings.setValue("DstPath", ui.m_pDstLineEdit->text());
 	settings.setValue("Mask", ui.m_pMaskEdit->text());
+
+	settings.setValue("ShowVersion", ui.m_pShowVersionCheck->isChecked());
 }
 
 // Чтение параметров из реестра
@@ -252,6 +278,9 @@ void FileHunterMW::ReadParams()
 
 	str = settings.value("Mask", "*.*").toString();
 	ui.m_pMaskEdit->setText(str);
+
+	isCheck = settings.value("ShowVersion", true).toBool();
+	ui.m_pShowVersionCheck->setChecked(isCheck);
 }
 
 // Обновить иконку файла
@@ -330,6 +359,8 @@ void FileHunterMW::slotSearch()
 	m_FileSystemWatcher.removePaths(lsFiles);
 
 	m_FileHunterCore.SetDstDir(ui.m_pDstLineEdit->text());
+	m_FileHunterCore.SetMask(ui.m_pMaskEdit->text());
+	m_FileHunterCore.SetFindFileVersionEnabled(ui.m_pShowVersionCheck->isChecked());
 
 	if(ui.m_pSrcFileRadioBtn->isChecked())
 	{
@@ -341,8 +372,6 @@ void FileHunterMW::slotSearch()
 		m_FileHunterCore.SetSrcDir(ui.m_pSrcLineEdit->text());
 		m_FileHunterCore.FindFiles();
 	}
-
-	m_FileHunterCore.SetMask(ui.m_pMaskEdit->text());
 }
 
 // Найдены файлы
@@ -373,6 +402,7 @@ void FileHunterMW::slotFindFileCompleted(TFindFilesRecord rFindFile, int nCurren
 	{
 		ui.m_pTable->setSpan(nRow, SRC_NAME_COLUMN, nRowSpanCount, 1);
 		ui.m_pTable->setSpan(nRow, SRC_DATE_COLUMN, nRowSpanCount, 1);
+		ui.m_pTable->setSpan(nRow, SRC_VERSION_COLUMN, nRowSpanCount, 1);
 	}
 
 	m_FileSystemWatcher.addPath(rFindFile.sSrcFile);
@@ -387,7 +417,12 @@ void FileHunterMW::slotFindFileCompleted(TFindFilesRecord rFindFile, int nCurren
 			pItem->setTextAlignment(Qt::AlignTop);
 
 		ui.m_pTable->setItem(i, SRC_NAME_COLUMN, pItem);
-		CreateItemDate(rFindFile.sSrcFile, i, SRC_DATE_COLUMN, isAlignTop);
+
+		if(ui.m_pShowVersionCheck->isChecked())
+			// Отображение версии файла
+			CreateItemVersion(rFindFile.sSrcVersion, i, SRC_VERSION_COLUMN, isAlignTop);
+		
+		CreateItemDate(rFindFile.sSrcFile, i, SRC_DATE_COLUMN, isAlignTop);		
 	}
 	
 	// Отображаем найденные файлы
@@ -404,9 +439,15 @@ void FileHunterMW::slotFindFileCompleted(TFindFilesRecord rFindFile, int nCurren
 		{
 			pItem = new QTableWidgetItem(GetSvnIcon(rFindFile.lnFindFilesStatus[j]), rFindFile.lsFindFiles[j]);
 			ui.m_pTable->setItem(i, DST_NAME_COLUMN, pItem);
+
+			if(ui.m_pShowVersionCheck->isChecked())
+				// Отображение версии файла
+				CreateItemVersion(rFindFile.lsFindFilesVersions[j], i, DST_VERSION_COLUMN);
+
 			CreateItemDate(rFindFile.lsFindFiles[j], i, DST_DATE_COLUMN);
 			// Устанавливаем признак равенства
 			CreateItemEqual(rFindFile.lisEqual[j], i);
+			CreateItemDiff(!rFindFile.lisEqual[j], i);
 			ShowHideRow(i);
 			ui.m_pTable->update();
 		}
@@ -479,6 +520,20 @@ void FileHunterMW::slotItemClicked(QTableWidgetItem* pItem)
 	TRowList *pRowLists;
 
 	int nState = pItem->text().toInt();
+
+	switch(pItem->column())
+	{
+		case EQUAL_COLUMN:
+			break;
+
+		case DIFF_COLUMN:
+			if(nState)
+				slotMerge();
+			return;
+
+		default:
+			return;
+	}
 
 	if(pItem->column() != EQUAL_COLUMN)
 		return;
@@ -644,7 +699,8 @@ void FileHunterMW::slotMerge()
 	QTableWidgetItem *pSrcItem = ui.m_pTable->item(pItem->row(), SRC_NAME_COLUMN);
 	QTableWidgetItem *pDstItem = ui.m_pTable->item(pItem->row(), DST_NAME_COLUMN);
 
-	QProcess::execute("TortoiseMerge.exe " + pSrcItem->text() + " " + pDstItem->text());
+	QProcess::startDetached("TortoiseMerge.exe " + pSrcItem->text() + " " + pDstItem->text());
+	
 	// Обновить значок статуса svn
 	UpdateSvnIcon(pSrcItem);
 	UpdateSvnIcon(pDstItem);
@@ -670,10 +726,18 @@ void FileHunterMW::slotFileChanged(const QString &sPath)
 	else
 		pItem = ui.m_pTable->item(pSrcItem->row(), DST_DATE_COLUMN);
 
-	pItem->setText(file_info.lastModified().toString("dd.MM.yy hh:mm:ss"));
-
 	if(pItem == 0)
 		return;
+
+	pItem->setText(file_info.lastModified().toString("dd.MM.yy hh:mm:ss"));
+
+	// Изменяем версию файла
+	if(pSrcItem->column() == SRC_NAME_COLUMN)
+		pItem = ui.m_pTable->item(pSrcItem->row(), SRC_VERSION_COLUMN);
+	else
+		pItem = ui.m_pTable->item(pSrcItem->row(), DST_VERSION_COLUMN);
+
+	pItem->setText(m_FileHunterCore.FindFileVersion(sPath));
 
 	if(pSrcItem->column() == SRC_NAME_COLUMN)
 	{
@@ -712,5 +776,13 @@ void FileHunterMW::slotFileChanged(const QString &sPath)
 		}
 
 		pItem->setText(QString::number(nStatus));
+
+		// item сравнения
+		pItem = ui.m_pTable->item(pDstItem->row(), DIFF_COLUMN);
+
+		if(nStatus == YES_EQUAL)
+			pItem->setText(QString::number(0)); 
+		else
+			pItem->setText(QString::number(1));
 	}
 }

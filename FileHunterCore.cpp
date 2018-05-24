@@ -12,6 +12,8 @@ FileHunterCore::FileHunterCore()
 	
 	m_sMask = "*.*";
 
+	m_isFindFileVersion = false;
+
 	m_pData1 = (char*)malloc(MAX_BUF_SIZE);
 	m_pData2 = (char*)malloc(MAX_BUF_SIZE);
 
@@ -136,6 +138,12 @@ void FileHunterCore::SetMask(const QString &sMask)
 	m_sMask = sMask;
 }
 
+// Включить поиск версии файла
+void FileHunterCore::SetFindFileVersionEnabled(bool isEnabled)
+{
+	m_isFindFileVersion = isEnabled;
+}
+
 // Поиск файла
 TFindFilesRecord FileHunterCore::FindFile(const QString &sFile)
 {
@@ -159,6 +167,9 @@ TFindFilesRecord FileHunterCore::FindFile(const QString &sFile)
 		// Добавляем в список признак равенства файлов
 		rFindFiles.lisEqual << IsEqual(sFile, sFindFile);
 	}
+
+	if(m_isFindFileVersion)
+		FindFilesVersions(&rFindFiles);
 
 	return rFindFiles;
 }
@@ -213,6 +224,49 @@ void FileHunterCore::FindFilesTh()
 	m_StopMutex.lock();
 	m_isStop = 1;
 	m_StopMutex.unlock();
+}
+
+// Поиск версии файла
+QString FileHunterCore::FindFileVersion(const QString &sFile)
+{
+	QString sVersion;
+	QFile file(sFile);
+	QTextStream strm(&file);
+	QString sData;
+	int i, idx;
+
+	if(!file.open(QIODevice::ReadOnly | QIODevice::Text))
+		return sVersion;
+
+	// Поиск версии в 30 первых строках
+		for(i = 0; i < 30; i++)
+	{	
+		sData = strm.readLine();
+		
+		idx = sData.indexOf("Version");
+
+		if(idx != -1)
+			break;
+	}
+		
+	if((idx != -1) && (sData.indexOf(":") != -1))
+	{
+		sData.remove(0, sData.indexOf(":") + 1);
+		sVersion = sData.trimmed();
+	}
+	
+	file.close();
+
+	return sVersion;
+}
+
+// Поиск версий файлов
+void FileHunterCore::FindFilesVersions(TFindFilesRecord *prFindFiles)
+{
+	prFindFiles->sSrcVersion = FindFileVersion(prFindFiles->sSrcFile);
+
+	foreach(QString sFile, prFindFiles->lsFindFiles)
+		prFindFiles->lsFindFilesVersions << FindFileVersion(sFile);
 }
 
 QMap<QString, int> FileHunterCore::GetSvnStatus(QString sPath)
